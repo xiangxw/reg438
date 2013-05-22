@@ -1,16 +1,17 @@
-#include <pcl/features/integral_image_normal.h>
+#include <pcl/features/normal_3d.h>
 #include <pcl/keypoints/sift_keypoint.h>
 #include <pcl/features/fpfh.h>
 #include "feature.h"
 
 NormalCloudPtr compute_normals(const PointCloudConstPtr &cloud, float radius)
 {
-	pcl::IntegralImageNormalEstimation<PointT, NormalT> ne;
+	pcl::NormalEstimation<PointT, NormalT> ne;
+	pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<PointT>);
 	NormalCloudPtr cloud_normal(new NormalCloud);
-	ne.setNormalEstimationMethod (ne.AVERAGE_3D_GRADIENT);
-	ne.setMaxDepthChangeFactor(0.02f);
-	ne.setNormalSmoothingSize(10.0f);
+
 	ne.setInputCloud(cloud);
+	ne.setSearchMethod(tree);
+	ne.setRadiusSearch(radius);
 	ne.compute(*cloud_normal);
 
 	return cloud_normal;
@@ -21,7 +22,7 @@ PointCloudPtr compute_keypoints(const PointCloudPtr &cloud,
 {
 	pcl::SIFTKeypoint<PointT, pcl::PointWithScale> sift_detect;
 
-	sift_detect.setSearchMethod(pcl::search::Search<PointT>::Ptr(new pcl::search::OrganizedNeighbor<PointT>));
+	sift_detect.setSearchMethod(pcl::search::Search<PointT>::Ptr(new pcl::search::KdTree<PointT>));
 	sift_detect.setScales(min_scale, nr_octaves, nr_scales_per_octave);
 	sift_detect.setMinimumContrast(min_contrast);
 	sift_detect.setInputCloud(cloud);
@@ -38,10 +39,10 @@ FeatureCloudPtr compute_feature_descriptors(const PointCloudConstPtr &cloud,
 		float radius)
 {
 	pcl::FPFHEstimation<PointT, NormalT, FeatureT> fpfh;
-	pcl::search::Search<PointT>::Ptr search(new pcl::search::OrganizedNeighbor<PointT>);
+	pcl::search::KdTree<PointT>::Ptr tree(new pcl::search::KdTree<PointT>);
 	FeatureCloudPtr fpfhs(new FeatureCloud);
 
-	fpfh.setSearchMethod(search);
+	fpfh.setSearchMethod(tree);
 	fpfh.setRadiusSearch(radius);
 	fpfh.setSearchSurface(cloud);
 	fpfh.setInputNormals(normals);

@@ -60,6 +60,7 @@ int main (int argc, char **argv)
 {
 	const char *result = "result.pcd";
 	Arg arg;
+	std::vector<int> index;
 
 	PointCloudPtr cloud_source(new PointCloud);
 	NormalCloudPtr normals_source(new NormalCloud);
@@ -82,6 +83,7 @@ int main (int argc, char **argv)
 	std::stringstream filename;
 	filename << "data/" << arg.files[0] << ".pcd";
 	pcl::io::loadPCDFile(filename.str(), *cloud_target);
+	pcl::removeNaNFromPointCloud(*cloud_target, *cloud_target, index);
 	*cloud_result = *cloud_target;
 
 	// register all clouds
@@ -95,6 +97,7 @@ int main (int argc, char **argv)
 			continue;
 		}
 		pcl::io::loadPCDFile(filename.str(), *cloud_source);
+		pcl::removeNaNFromPointCloud(*cloud_source, *cloud_source, index);
 
 		pcl::console::print_info("---------- start cloud %s ----------\n", filename.str().c_str());
 
