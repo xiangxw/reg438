@@ -27,6 +27,7 @@ struct Arg {
 	float min_sample_distance;
 	double max_correspondence_distance;
 	int nr_iterations;
+	int nr_samples;
 
 	// -r
 	double max_correspondence_distance_icp;
@@ -168,10 +169,10 @@ int main (int argc, char **argv)
 		}
 
 		// initial align
-		pcl::console::print_info("start initial align, args: %f, %f, %d\n",
-			arg.min_sample_distance, arg.max_correspondence_distance, arg.nr_iterations);
+		pcl::console::print_info("start initial align, args: %f, %f, %d, %d\n",
+			arg.min_sample_distance, arg.max_correspondence_distance, arg.nr_iterations, arg.nr_samples);
 		pair_transform = initial_align(keypoints_source, features_source, keypoints_target, features_target,
-				arg.min_sample_distance, arg.max_correspondence_distance, arg.nr_iterations);
+				arg.min_sample_distance, arg.max_correspondence_distance, arg.nr_iterations, arg.nr_samples);
 
 		// refine align
 		if (arg.refine_align) {
@@ -267,7 +268,7 @@ void parse_cmd(int argc, char **argv, Arg *arg)
 	detect_initial_align = (pcl::console::parse_argument(argc, argv, "-i", params_string) > 0);
 	if (detect_initial_align) {
 		boost::split(tokens, params_string, boost::is_any_of(","), boost::token_compress_on);
-		if (tokens.size() != 3) {
+		if (tokens.size() != 4) {
 			pcl::console::print_error("command input error: invalid initial align arguments!\n");
 			help();
 			exit(1);
@@ -275,10 +276,12 @@ void parse_cmd(int argc, char **argv, Arg *arg)
 		arg->min_sample_distance = (float)atof(tokens[0].c_str());
 		arg->max_correspondence_distance = atof(tokens[1].c_str());
 		arg->nr_iterations = atoi(tokens[2].c_str());
+		arg->nr_samples = atoi(tokens[3].c_str());
 	} else {
 		arg->min_sample_distance = 0.025f;
 		arg->max_correspondence_distance = 0.01;
 		arg->nr_iterations = 500;
+		arg->nr_samples = 3;
 	}
 
 	// refine align

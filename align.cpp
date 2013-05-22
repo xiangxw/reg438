@@ -4,7 +4,7 @@
 
 Matrix initial_align(const PointCloudConstPtr &keypoints_source, const FeatureCloudConstPtr &descriptors_source,
 		const PointCloudConstPtr &keypoints_target, const FeatureCloudConstPtr &descriptors_target,
-		float min_sample_distance, double max_correspondence_distance, int nr_iterations)
+		float min_sample_distance, double max_correspondence_distance, int nr_iterations, int nr_samples)
 {
 	pcl::SampleConsensusInitialAlignment<PointT, PointT, FeatureT> sac;
 	PointCloud cloud;
@@ -12,6 +12,7 @@ Matrix initial_align(const PointCloudConstPtr &keypoints_source, const FeatureCl
 	sac.setMinSampleDistance(min_sample_distance);
 	sac.setMaxCorrespondenceDistance(max_correspondence_distance);
 	sac.setMaximumIterations(nr_iterations);
+	sac.setNumberOfSamples(nr_samples);
 
 	sac.setInputCloud(keypoints_source);
 	sac.setSourceFeatures(descriptors_source);
