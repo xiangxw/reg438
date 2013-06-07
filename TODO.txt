@@ -1,2 +1,1 @@
-* 显示匹配关系
-* 显示描述因子
+* Show correspondences
