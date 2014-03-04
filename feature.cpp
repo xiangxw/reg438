@@ -1,6 +1,7 @@
 #include <pcl/features/normal_3d.h>
 #include <pcl/keypoints/sift_keypoint.h>
 #include <pcl/features/fpfh.h>
+#include <pcl/kdtree/kdtree_flann.h>
 #include "feature.h"
 
 NormalCloudPtr compute_normals(const PointCloudConstPtr &cloud, float radius)
@@ -50,4 +51,27 @@ FeatureCloudPtr compute_feature_descriptors(const PointCloudConstPtr &cloud,
 	fpfh.compute(*fpfhs);
 
 	return fpfhs;
+}
+
+void find_feature_correspondences(const FeatureCloudConstPtr &source_features,
+		const FeatureCloudConstPtr &target_features,
+		std::vector<int> &correspondences, std::vector<int> &correspondence_scores)
+{
+	// Resize the output vector
+	correspondences.resize(source_features->size());
+	correspondence_scores.resize(source_features->size());
+
+	// Use a KdTree to search for the nearest matches in feature space
+	pcl::KdTreeFLANN<FeatureT> kdtree;
+	kdtree.setInputCloud(target_features);
+
+	// Find the index of the best match for each keypoint, and store it in "correspondences"
+	const int k = 1;
+	std::vector<int> k_indices(k);
+	std::vector<float> k_squared_distances(k);
+	for (size_t i = 0; i < source_features->size(); ++i) {
+		kdtree.nearestKSearch (*source_features, i, k, k_indices, k_squared_distances);
+		correspondences[i] = k_indices[0];
+		correspondence_scores[i] = k_squared_distances[0];
+	}
 }

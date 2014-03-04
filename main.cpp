@@ -54,8 +54,15 @@ struct Arg {
 	std::vector<std::string> files;
 };
 
-void parse_cmd(int argc, char **argv, Arg *arg);
-void help();
+static void parse_cmd(int argc, char **argv, Arg *arg);
+static void help();
+static void downsampling(const PointCloudConstPtr &cloud_in, const PointCloudPtr &cloud_out,
+		float leafx, float leafy, float leafz);
+static void visualize_keypoints(
+		const PointCloudConstPtr &cloud_source, const PointCloudConstPtr &keypoints_source,
+		const PointCloudConstPtr &cloud_target, const PointCloudConstPtr &keypoints_target,
+		const std::vector<int> &correspondences, const std::vector<float> &correspondences_scores,
+		int max_to_display);
 
 int main (int argc, char **argv)
 {
@@ -64,16 +71,17 @@ int main (int argc, char **argv)
 	std::vector<int> index;
 
 	PointCloudPtr cloud_source(new PointCloud);
+	PointCloudPtr cloud_source_downsampled(new PointCloud);
 	NormalCloudPtr normals_source(new NormalCloud);
 	PointCloudPtr keypoints_source(new PointCloud);
 	FeatureCloudPtr features_source(new FeatureCloud);
 
 	PointCloudPtr cloud_target(new PointCloud);
+	PointCloudPtr cloud_target_downsampled(new PointCloud);
 	NormalCloudPtr normals_target(new NormalCloud);
 	PointCloudPtr keypoints_target(new PointCloud);
 	FeatureCloudPtr features_target(new FeatureCloud);
 
-	PointCloudPtr cloud_registered(new PointCloud);
 	PointCloudPtr cloud_result(new PointCloud);
 	Matrix global_transform = Matrix::Identity(), pair_transform;
 
@@ -85,6 +93,8 @@ int main (int argc, char **argv)
 	filename << "data/" << arg.files[0] << ".pcd";
 	pcl::io::loadPCDFile(filename.str(), *cloud_target);
 	pcl::removeNaNFromPointCloud(*cloud_target, *cloud_target, index);
+	downsampling(cloud_target, cloud_target_downsampled,
+			arg.downsampling_leafx, arg.downsampling_leafy, arg.downsampling_leafz);
 	*cloud_result = *cloud_target;
 
 	// register all clouds
@@ -99,48 +109,50 @@ int main (int argc, char **argv)
 		}
 		pcl::io::loadPCDFile(filename.str(), *cloud_source);
 		pcl::removeNaNFromPointCloud(*cloud_source, *cloud_source, index);
+		downsampling(cloud_source, cloud_source_downsampled,
+				arg.downsampling_leafx, arg.downsampling_leafy, arg.downsampling_leafz);
 
 		pcl::console::print_info("---------- start cloud %s ----------\n", filename.str().c_str());
 
 		// source normals
 		pcl::console::print_info("start compute source normals, normal radius: %f\n", arg.normal_radius);
-		normals_source = compute_normals(cloud_source, arg.normal_radius);
+		normals_source = compute_normals(cloud_source_downsampled, arg.normal_radius);
 		// source keypoints
 		pcl::console::print_info("start compute source keypoints, args: %f, %d, %d, %f\n",
 				arg.min_scale, arg.nr_octaves, arg.nr_scales_per_octave, arg.min_contrast);
-		keypoints_source = compute_keypoints(cloud_source,
+		keypoints_source = compute_keypoints(cloud_source_downsampled,
 				arg.min_scale, arg.nr_octaves, arg.nr_scales_per_octave, arg.min_contrast);
 		// source descriptors
 		pcl::console::print_info("start compute source features, feature radius: %f\n", arg.feature_radius);
-		features_source = compute_feature_descriptors(cloud_source,
+		features_source = compute_feature_descriptors(cloud_source_downsampled,
 				normals_source, keypoints_source, arg.feature_radius);
 
 		// target normals
 		pcl::console::print_info("start compute target normals, normal radius: %f\n", arg.normal_radius);
-		normals_target = compute_normals(cloud_target, arg.normal_radius);
+		normals_target = compute_normals(cloud_target_downsampled, arg.normal_radius);
 		// target keypoints
 		pcl::console::print_info("start compute target keypoints, args: %f, %d, %d, %f\n",
 				arg.min_scale, arg.nr_octaves, arg.nr_scales_per_octave, arg.min_contrast);
-		keypoints_target = compute_keypoints(cloud_target,
+		keypoints_target = compute_keypoints(cloud_target_downsampled,
 				arg.min_scale, arg.nr_octaves, arg.nr_scales_per_octave, arg.min_contrast);
 		// target descriptors
 		pcl::console::print_info("start compute target features, feature radius: %f\n", arg.feature_radius);
-		features_target = compute_feature_descriptors(cloud_target,
+		features_target = compute_feature_descriptors(cloud_target_downsampled,
 				normals_target, keypoints_target, arg.feature_radius);
 
 		// visualize
 		if (arg.show_normals || arg.show_keypoints) {
 			pcl::visualization::PCLVisualizer viewer_source("Source Cloud");
 			pcl::visualization::PCLVisualizer viewer_target("Target Cloud");
-			pcl::visualization::PointCloudColorHandlerRGBField<PointT> hander_source(cloud_source);
-			pcl::visualization::PointCloudColorHandlerRGBField<PointT> hander_target(cloud_target);
+			pcl::visualization::PointCloudColorHandlerRGBField<PointT> hander_source(cloud_source_downsampled);
+			pcl::visualization::PointCloudColorHandlerRGBField<PointT> hander_target(cloud_target_downsampled);
 
 			// visualize source
-			viewer_source.addPointCloud(cloud_source, hander_source, "cloud_source");
-			viewer_source.resetCameraViewpoint("cloud_source");
+			viewer_source.addPointCloud(cloud_source_downsampled, hander_source, "cloud_source_downsampled");
+			viewer_source.resetCameraViewpoint("cloud_source_downsampled");
 			if (arg.show_normals) {
 				viewer_source.addPointCloudNormals<PointT, NormalT>(
-						cloud_source, normals_source, 100, 0.02, "normals_source");
+						cloud_source_downsampled, normals_source, 100, 0.02, "normals_source");
 			}
 			if (arg.show_keypoints) {
 				pcl::visualization::PointCloudColorHandlerCustom<PointT> red(keypoints_source, 255, 0, 0);
@@ -149,11 +161,11 @@ int main (int argc, char **argv)
 			}
 
 			// visualize target
-			viewer_target.addPointCloud(cloud_target, hander_target, "cloud_target");
-			viewer_target.resetCameraViewpoint("cloud_target");
+			viewer_target.addPointCloud(cloud_target_downsampled, hander_target, "cloud_target_downsampled");
+			viewer_target.resetCameraViewpoint("cloud_target_downsampled");
 			if (arg.show_normals) {
 				viewer_target.addPointCloudNormals<PointT, NormalT>(
-						cloud_target, normals_target, 100, 0.02, "normals_target");
+						cloud_target_downsampled, normals_target, 100, 0.02, "normals_target");
 			}
 			if (arg.show_keypoints) {
 				pcl::visualization::PointCloudColorHandlerCustom<PointT> red(keypoints_target, 255, 0, 0);
@@ -179,7 +191,7 @@ int main (int argc, char **argv)
 			pcl::console::print_info("start refine align, args: %f, %f, %f, %d\n",
 				arg.max_correspondence_distance_icp, arg.outlier_rejection_threshold,
 				arg.transformation_epsilon, arg.max_iterations);
-			pair_transform = refine_align(cloud_source, cloud_target,
+			pair_transform = refine_align(cloud_source_downsampled, cloud_target_downsampled,
 					pair_transform, arg.max_correspondence_distance_icp,
 					arg.outlier_rejection_threshold, arg.transformation_epsilon, arg.max_iterations);
 		} else {
@@ -188,17 +200,15 @@ int main (int argc, char **argv)
 
 		// tranform
 		global_transform = pair_transform * global_transform;
-		pcl::transformPointCloud(*cloud_source, *cloud_registered, global_transform);
-		*cloud_result += *cloud_registered;
+		pcl::transformPointCloud(*cloud_source_downsampled, *cloud_source_downsampled, global_transform);
+		*cloud_result += *cloud_source_downsampled;
 		cloud_target = cloud_source;
+		cloud_target_downsampled = cloud_source_downsampled;
 
 		// downsampling
 		if (arg.downsampling) {
 			pcl::console::print_info("start downsampling...\n");
-			pcl::VoxelGrid<PointT> grid;
-			grid.setInputCloud(cloud_result);
-			grid.setLeafSize(0.001f, 0.001f, 0.001f);
-			grid.filter(*cloud_result);
+			downsampling(cloud_result, cloud_result, 0.001f, 0.001f, 0.001f);
 		} else {
 			pcl::console::print_info("no downsampling\n");
 		}
@@ -367,7 +377,7 @@ void parse_cmd(int argc, char **argv, Arg *arg)
 	}
 }
 
-void help()
+static void help()
 {
 	pcl::console::print_info("Usage: register_with_feature_all files [options]\n");
 	pcl::console::print_info("start ................................. start index of input pcd file\n");
@@ -383,4 +393,53 @@ void help()
 	pcl::console::print_info("	--no-refine ......................... No refine alignment");
 	pcl::console::print_info("	--show-normals ...................... Show normals");
 	pcl::console::print_info("	--show-keypoints .................... Show keypoints");
+}
+
+static void downsampling(const PointCloudConstPtr &cloud_in, const PointCloudPtr &cloud_out,
+		float leafx, float leafy, float leafz)
+{
+	pcl::VoxelGrid<PointT> grid;
+
+	grid.setInputCloud(cloud_in);
+	grid.setLeafSize(leafx, leafy, leafz);
+	grid.filter(*cloud_out);
+}
+
+static void visualize_keypoints(
+		const PointCloudConstPtr &cloud_source, const PointCloudConstPtr &keypoints_source,
+		const PointCloudConstPtr &cloud_target, const PointCloudConstPtr &keypoints_target,
+		const std::vector<int> &correspondences, const std::vector<float> &correspondences_scores,
+		int max_to_display)
+{
+	// We want to visualize two clouds side-by-side, so do to this, we'll make copies of the clouds and transform them
+	// by shifting one to the left and the other to the right.  Then we'll draw lines between the corresponding points
+
+	// Create some new point clouds to hold our transformed data
+	PointCloudPtr points_left(new PointCloud);
+	PointCloudPtr keypoints_left(new PointCloud);
+	PointCloudPtr points_right(new PointCloud);
+	PointCloudPtr keypoints_right(new PointCloud);
+
+	// Shift the first clouds' points to the left
+	const Eigen::Vector3f translate(0.4, 0.0, 0.0);
+	const Eigen::Quaternionf no_rotation(0, 0, 0, 0);
+	pcl::transformPointCloud(*cloud_source, *points_left, -translate, no_rotation);
+	pcl::transformPointCloud(*keypoints_source, *keypoints_left, -translate, no_rotation);
+
+	// Shift the second clouds' points to the right
+	pcl::transformPointCloud(*cloud_target, *points_right, translate, no_rotation);
+	pcl::transformPointCloud(*keypoints_target, *keypoints_right, translate, no_rotation);
+
+	// Add the clouds to the visualizer
+	pcl::visualization::PCLVisualizer vis;
+	vis.addPointCloud(points_left, "points_left");
+	vis.addPointCloud(points_right, "points_right");
+
+	// Compute the weakest correspondence score to display
+	std::vector<float> temp(correspondence_scores);
+	std::sort(temp.begin(), temp.end());
+	if (max_to_display >= temp.size()) {
+		max_to_display = temp.size() - 1;
+	}
+	float threshold = temp[max_to_display];
 }
