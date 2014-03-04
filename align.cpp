@@ -14,7 +14,7 @@ Matrix initial_align(const PointCloudConstPtr &keypoints_source, const FeatureCl
 	sac.setMaximumIterations(nr_iterations);
 	sac.setNumberOfSamples(nr_samples);
 
-	sac.setInputCloud(keypoints_source);
+	sac.setInputSource(keypoints_source);
 	sac.setSourceFeatures(descriptors_source);
 	sac.setInputTarget(keypoints_target);
 	sac.setTargetFeatures(descriptors_target);
@@ -37,7 +37,7 @@ Matrix refine_align (const PointCloudConstPtr &source_points, const PointCloudCo
 
 	pcl::transformPointCloud (*source_points, *source_points_transformed, initial_alignment);
 
-	icp.setInputCloud (source_points_transformed);
+	icp.setInputSource (source_points_transformed);
 	icp.setInputTarget (target_points);
 
 	icp.align (registration_output);

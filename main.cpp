@@ -98,8 +98,8 @@ int main (int argc, char **argv)
 	*cloud_result = *cloud_target;
 
 	// register all clouds
-	for (std::vector<std::string>::const_iterator i = arg.files.cbegin() + 1;
-			i != arg.files.cend(); ++i) {
+	for (std::vector<std::string>::const_iterator i = arg.files.begin() + 1;
+			i != arg.files.end(); ++i) {
 		// load pcd file
 		std::stringstream filename;
 		filename << "data/" << *i << ".pcd";
@@ -345,8 +345,8 @@ void parse_cmd(int argc, char **argv, Arg *arg)
 	// input files
 	boost::split(tokens, argv[1], boost::is_any_of(","), boost::token_compress_on);
 	if (tokens.size() >= 2) {
-		for (std::vector<std::string>::const_iterator i = tokens.cbegin();
-				i != tokens.cend(); ++i) {
+		for (std::vector<std::string>::const_iterator i = tokens.begin();
+				i != tokens.end(); ++i) {
 			arg->files.push_back(*i);
 		}
 		detect_input_files = true;
@@ -436,7 +436,7 @@ static void visualize_keypoints(
 	vis.addPointCloud(points_right, "points_right");
 
 	// Compute the weakest correspondence score to display
-	std::vector<float> temp(correspondence_scores);
+	std::vector<float> temp(correspondences_scores);
 	std::sort(temp.begin(), temp.end());
 	if (max_to_display >= temp.size()) {
 		max_to_display = temp.size() - 1;
