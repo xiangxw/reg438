@@ -380,8 +380,8 @@ void parse_cmd(int argc, char **argv, Arg *arg)
 static void help()
 {
 	pcl::console::print_info("Usage: register_with_feature_all files [options]\n");
-	pcl::console::print_info("start ................................. start index of input pcd file\n");
-	pcl::console::print_info("end ................................... end index of input pcd file\n");
+	pcl::console::print_info("files:\n");
+	pcl::console::print_info("	Index range like 1-30 or index list like 1,3,4,5,6\n");
 	pcl::console::print_info("[options]:\n");
 	pcl::console::print_info("	-n normal_radius .................... Normal Radius\n");
 	pcl::console::print_info("	-k min_scale,nr_octaves,nr_scales_per_octave,min_contrast ......... Compute Keypoints\n");
@@ -390,9 +390,9 @@ static void help()
 	pcl::console::print_info("	-r max_correspondence_distance,outlier_rejection_threshold,transformation_epsilon,max_iterations .. ICP refine align argument\n");
 	pcl::console::print_info("	-d leafx,leafy,leafz ................ Downsampling leaf size\n");
 	pcl::console::print_info("	--no-downsampling ................... No downsampling\n");
-	pcl::console::print_info("	--no-refine ......................... No refine alignment");
-	pcl::console::print_info("	--show-normals ...................... Show normals");
-	pcl::console::print_info("	--show-keypoints .................... Show keypoints");
+	pcl::console::print_info("	--no-refine ......................... No refine alignment\n");
+	pcl::console::print_info("	--show-normals ...................... Show normals\n");
+	pcl::console::print_info("	--show-keypoints .................... Show keypoints\n");
 }
 
 static void downsampling(const PointCloudConstPtr &cloud_in, const PointCloudPtr &cloud_out,
